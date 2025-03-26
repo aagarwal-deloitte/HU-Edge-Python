@@ -24,7 +24,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from split_it_app.views import RegisterView, LoginApi, UserApi
+from split_it_app.views import RegisterApi, LoginApi, UserApi, OccasionApi
 
 
 urlpatterns = [
@@ -40,8 +40,10 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    path('split_it_app/register/', RegisterView.as_view(), name = 'register_users'),
+    path('split_it_app/register/', RegisterApi.as_view(), name = 'register_users'),
     path('split_it_app/login/', LoginApi.as_view(), name = 'login_users'),
     
-    path('split_it_app/users/', UserApi.as_view(), name = 'get_users'),   
+    path('split_it_app/users/', UserApi.as_view(), name = 'get_users'),  
+    
+    path('split_it_app/occasion/', OccasionApi.as_view(), name = 'occasion-view-create'),
 ]

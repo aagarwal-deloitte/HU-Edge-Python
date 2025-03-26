@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate
+from .models import Occasion
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,4 +18,14 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
+
+class OccasionSerializer(serializers.ModelSerializer):
+    
+    created_by_user = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Occasion
+        fields = ('id', 'description', 'expender', 'utiliser', 'created_by_user')
         
+    def get_created_by_user(self, attrs):
+        return attrs.created_by.username

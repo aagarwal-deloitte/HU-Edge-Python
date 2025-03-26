@@ -1,15 +1,14 @@
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
-from rest_framework.permissions import AllowAny
-from rest_framework import generics
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, OccasionSerializer
+from .models import Occasion
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.exceptions import ValidationError
 
 # Generates Token
 def get_tokens_for_user(user):
@@ -34,7 +33,7 @@ class UserApi(APIView):
         serializer = UserSerializer(queryset, many = True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class RegisterView(generics.CreateAPIView):
+class RegisterApi(generics.CreateAPIView):
     """ Registers a new user in the application. """
     
     queryset = User.objects.all()
@@ -42,7 +41,6 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginApi(APIView):
     """ Logs in a registered user after authentication in the application. """
-    serializer = LoginSerializer
     
     def post(self, request):
         """ Authenticate and logs in a user. """
@@ -57,6 +55,23 @@ class LoginApi(APIView):
             
         user = authenticate(username=username, password=password)
         if user is not None:
-            return Response(get_tokens_for_user(), status=status.HTTP_202_ACCEPTED)
+            return Response(get_tokens_for_user(user), status=status.HTTP_202_ACCEPTED)
         else:
-            return Response({'message': 'Invalid Credentials'}, status.HTTP_401_UNAUTHORIZED)            
+            return Response({'message': 'Invalid Credentials'}, status.HTTP_401_UNAUTHORIZED)
+                   
+class OccasionApi(generics.ListCreateAPIView):
+    """ Allows the user to create and view the occasion. """
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = OccasionSerializer 
+    
+    def get_queryset(self):
+        user = self.request.query_params.get('user', None)
+        if not user:
+            raise ValidationError({"message": "Please provide the 'user' to view occasions."})
+        return Occasion.objects.filter(created_by=self.request.user)
+        
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)  
