@@ -1,4 +1,3 @@
 db.sqlite3
-split_it_app/__pycache__/
-split_it_app/migrations/
-split_it_project/__pycache__/
+**/__pycache__/
+**/migrations/
