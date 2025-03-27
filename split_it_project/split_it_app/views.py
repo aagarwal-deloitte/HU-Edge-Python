@@ -8,7 +8,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.exceptions import ValidationError
 
 # Generates Token
 def get_tokens_for_user(user):
@@ -84,3 +83,33 @@ class EventApi(generics.ListCreateAPIView):
         
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+        
+class ExpenseApi(APIView):
+    """ Allows the user to clear the expense. """
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        user_name = request.data.get('user')
+        event_name = request.data.get('event')
+        split_amount = request.data.get('amount')
+        
+        if not user_name or not event_name:
+            return Response("User and Event are required.", status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            event = Event.objects.get(description=event_name)
+        except Event.DoesNotExist:
+            return Response("Provided event does not exist.", status=status.HTTP_404_NOT_FOUND)
+        
+        if event.clear_expense(user_name, split_amount):
+            return Response({
+            "message": f'Updated expense for event: {event_name} for user: {user_name}.',
+            "updated_expense": event.expense_split
+        }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+            "message": f'No such event: {event_name} found for user: {user_name}.',
+            "updated_expense": event.expense_split
+        }, status=status.HTTP_404_NOT_FOUND)
