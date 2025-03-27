@@ -44,10 +44,11 @@ class EventSerializer(serializers.ModelSerializer):
     expense_split = serializers.SerializerMethodField()
     occasion = serializers.CharField(write_only=True, required=False)
     occasion_name = serializers.SerializerMethodField()
+    split = serializers.JSONField(write_only=True)
     
     class Meta:
         model = Event
-        fields = ('id', 'description', 'occasion', 'occasion_name', 'amount', 'expender', 'utiliser', 'split_type', 'expense_split')
+        fields = ('id', 'description', 'occasion', 'occasion_name', 'amount', 'expender', 'utiliser', 'split_type', 'expense_split', 'split')
     
     def get_expense_split(self, obj):
         splits = obj.calculate_split() or {}
