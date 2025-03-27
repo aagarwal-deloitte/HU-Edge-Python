@@ -1,8 +1,8 @@
 from rest_framework.response import Response
 from rest_framework import status, generics
 from django.contrib.auth.models import User
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, OccasionSerializer
-from .models import Occasion
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, OccasionSerializer, EventSerializer
+from .models import Occasion, Event
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
@@ -67,11 +67,20 @@ class OccasionApi(generics.ListCreateAPIView):
     serializer_class = OccasionSerializer 
     
     def get_queryset(self):
-        user = self.request.query_params.get('user', None)
-        if not user:
-            raise ValidationError({"message": "Please provide the 'user' to view occasions."})
         return Occasion.objects.filter(created_by=self.request.user)
         
-    
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)  
+        
+class EventApi(generics.ListCreateAPIView):
+    """ Allows the user to create and view the event and tag it to occasion (optional). """
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class =  EventSerializer 
+    
+    def get_queryset(self):
+        return Event.objects.filter(created_by=self.request.user)
+        
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
