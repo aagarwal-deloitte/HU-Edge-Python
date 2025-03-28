@@ -34,6 +34,8 @@ class OccasionSerializer(serializers.ModelSerializer):
     #     return attrs.created_by.username
     
     def get_events(self, obj):
+        """ lists all the events created by the authenticated user. """
+        
         events = Event.objects.filter(occasion=obj)
         if events.exists():
             return EventSerializer(events, many=True).data
@@ -49,10 +51,27 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = ('id', 'description', 'occasion', 'occasion_name', 'amount', 'expender', 'utiliser', 'split_type', 'expense_split', 'split')
     
+    def validate_event(self, attrs):
+        """ Validates the amount provided and events for duplicacy. """
+        
+        description = attrs.get('description')
+        amount = attrs.get('amount')
+        
+        if self.instance is None and Event.objects.filter(description=description, amount=amount):
+            raise serializers.ValidationError(f'Event with name: {description} and amount: {amount} already exists.')
+        
+        if amount is not None and amount <=0:
+            raise serializers.ValidationError('Amount must be greater than zero.')
+        
+        return attrs
+    
     def get_occasion_name(self, attrs):
+        """ Returns the occasion name. """
+        
         return attrs.occasion.description if attrs.occasion else ""
         
     def create(self, validated_data):
+        """ Fetches the occasion details based on the occasion provided and tags it to the event. """
         occasion_description = validated_data.pop('occasion', None)
         
         if occasion_description:

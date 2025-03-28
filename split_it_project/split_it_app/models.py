@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User as user
 from rest_framework.exceptions import ValidationError
@@ -21,7 +22,7 @@ class Occasion(models.Model):
       
 # Event Model
 class Event(models.Model):
-   description = models.TextField(unique=True)
+   description = models.TextField()
    amount = models.DecimalField(max_digits=20, decimal_places=2)
    expender = models.CharField(max_length=200)
    utiliser = models.JSONField(default=list)
@@ -31,10 +32,17 @@ class Event(models.Model):
    split = models.JSONField(default=list, null=True, blank=True)
    expense_split = models.JSONField(default=dict)
    
+   class Meta:
+      constraints = [
+         models.UniqueConstraint(fields=['description', 'amount'], name='unique_event')
+      ]
+   
    def __str__(self):
       return self.description
    
    def calculate_split(self):
+      """ Calculates the split based on the no of utilisers. """
+      
       if self.split_type == 'equal':
          split_amount = float(self.amount) /len(self.utiliser)
          return { participant: round(float(split_amount), 2) for participant in self.utiliser}
@@ -48,6 +56,8 @@ class Event(models.Model):
       super(Event, self).save(update_fields=['expense_split'])
       
    def clear_expense(self, user, amount):
+      """ clears the expense of the user for the provided event. """
+      
       if user in self.expense_split:
          if amount <= self.expense_split[user]:
             updated_expense_split = self.expense_split.copy()
@@ -55,6 +65,8 @@ class Event(models.Model):
             self.expense_split = updated_expense_split
             super(Event, self).save(update_fields=['expense_split'])
             return True
+         elif Decimal(str(self.expense_split[user])) == Decimal("0.00"):
+            raise ValidationError({'message': f'Expense for this event is already cleared.'})
          else:
-            raise ValidationError({'message': 'Amount provided is greater than expense split for user: {user}'})
+            raise ValidationError({'message': f'Amount provided is greater than expense split for user: {user}'})
       return False
