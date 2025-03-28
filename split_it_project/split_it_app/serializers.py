@@ -33,7 +33,7 @@ class OccasionSerializer(serializers.ModelSerializer):
     # def get_created_by_user(self, attrs):
     #     return attrs.created_by.username
     
-    def get_events(self, obj):
+    def get_events(self, obj) -> dict:
         """ lists all the events created by the authenticated user. """
         
         events = Event.objects.filter(occasion=obj)
@@ -65,10 +65,10 @@ class EventSerializer(serializers.ModelSerializer):
         
         return attrs
     
-    def get_occasion_name(self, attrs):
+    def get_occasion_name(self, obj) -> str:
         """ Returns the occasion name. """
         
-        return attrs.occasion.description if attrs.occasion else ""
+        return obj.occasion.description if obj.occasion else ""
         
     def create(self, validated_data):
         """ Fetches the occasion details based on the occasion provided and tags it to the event. """

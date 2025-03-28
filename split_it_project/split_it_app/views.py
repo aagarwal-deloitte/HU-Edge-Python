@@ -19,17 +19,19 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
-class UserApi(APIView):
+class UserApi(generics.GenericAPIView):
     """ List all the users in the application. """
     
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    
     def get(self, request):
         """ Return a list of all users. """
-        
-        queryset = User.objects.all()
-        serializer = UserSerializer(queryset, many = True)
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class RegisterApi(generics.CreateAPIView):
@@ -38,14 +40,19 @@ class RegisterApi(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
 
-class LoginApi(APIView):
+class LoginApi(generics.GenericAPIView):
     """ Logs in a registered user after authentication in the application. """
+    
+    queryset = User.objects.all()
+    serializer_class = LoginSerializer
     
     def post(self, request):
         """ Authenticate and logs in a user. """
         
         data = request.data
-        serializer = LoginSerializer(data=data)
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True, data=data)
+        
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -89,6 +96,7 @@ class ExpenseApi(APIView):
     
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = None
     
     def post(self, request):
         user_name = request.data.get('user')
@@ -105,11 +113,23 @@ class ExpenseApi(APIView):
         
         if event.clear_expense(user_name, split_amount):
             return Response({
-            "message": f'Updated expense for event: {event_name} for user: {user_name}.',
+            "message": f'Updated expense for user: {user_name} for event: {event_name}.',
             "updated_expense": event.expense_split
         }, status=status.HTTP_200_OK)
         else:
             return Response({
-            "message": f'No such event: {event_name} found for user: {user_name}.',
+            "message": f'No such user: {user_name} found for event: {event_name}.',
             "updated_expense": event.expense_split
         }, status=status.HTTP_404_NOT_FOUND)
+            
+class OccasionSummaryApi(APIView):
+    """ Allows the user to view the summary of the occasion. """
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = None
+    
+    def retrieve(self, request, *args, **kwargs):
+        occasion = self.get_object()
+        expenditure_summary = occasion.get_expenditure_summary()
+        return Response(expenditure_summary, status=status.HTTP_200_OK)

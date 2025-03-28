@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User as user
 from rest_framework.exceptions import ValidationError
+from django.db.models import Sum
 
 # User Model
 class User(models.Model):
@@ -19,6 +20,49 @@ class Occasion(models.Model):
       
    def __str__(self):
       return self.description
+   
+   def get_expenditure_summary(self):
+      """ Generates the expenditure summary for the occasion. """
+      
+      events = self.event_occasions.all()
+      
+      summary = {
+         'occasion': self.description,
+         'total_expense': float(sum(event.amount for event in events)),
+         'participants': self.participants,
+         'total_no_of_events': len(events),
+         'event_expense': {},
+         'total_individual_expense': {},
+         'cleared_expense': {},
+         'total_active_expense': {},
+      }
+      
+      for event in events:
+         for user, amount in event.expense_split.items():
+            summary['total_active_expense'][user] =  float(summary['total_active_expense'].get(user, 0.0) + amount)
+      
+      for event in events:
+            summary['event_expense'][event.description] = event.amount
+            
+      cleared_expense = (
+         ExpenditureSummary.objects.filter(event__in=events).values("user").annotate(total_cleared=Sum("amount")) # sums the cleared amount by user
+      )
+      
+      for user, active_amount in summary['total_active_expense'].items():
+         summary['total_individual_expense'][user] = active_amount
+         
+         
+      for expense in cleared_expense:
+         user = expense['user']
+         cleared_amount = expense['total_cleared']
+         summary['total_individual_expense'][user] = summary['total_individual_expense'].get(user, 0.0) + float(cleared_amount)
+         
+      for expense in cleared_expense:
+         user = expense['user']
+         cleared_amount = expense['total_cleared']
+         summary['cleared_expense'][user] = float(cleared_amount)
+            
+      return summary
       
 # Event Model
 class Event(models.Model):
@@ -64,9 +108,18 @@ class Event(models.Model):
             updated_expense_split[user] = updated_expense_split[user] - float(amount)
             self.expense_split = updated_expense_split
             super(Event, self).save(update_fields=['expense_split'])
+            
+            # adding log that this expense is cleared.
+            ExpenditureSummary.objects.create(event=self, user=user, amount=amount)
+            
             return True
          elif Decimal(str(self.expense_split[user])) == Decimal("0.00"):
             raise ValidationError({'message': f'Expense for this event is already cleared.'})
          else:
             raise ValidationError({'message': f'Amount provided is greater than expense split for user: {user}'})
-      return False
+      return False   
+   
+class ExpenditureSummary(models.Model):
+   event = models.ForeignKey(Event, related_name='expenditure_history', on_delete=models.CASCADE)
+   user = models.CharField(max_length=255)
+   amount = models.DecimalField(max_digits=20, decimal_places=2)
