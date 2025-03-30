@@ -4,13 +4,13 @@ from django.contrib.auth.models import User as user
 from rest_framework.exceptions import ValidationError
 from django.db.models import Sum
 
-# User Model
-class User(models.Model):
-   username = models.CharField(max_length=100)
-   email = models.EmailField()
+# # User Model
+# class User(models.Model):
+#    username = models.CharField(max_length=100)
+#    email = models.EmailField()
    
-   def __str__(self):
-      return self.username
+#    def __str__(self):
+#       return self.username
 
 # Occasion Model
 class Occasion(models.Model):
