@@ -51,13 +51,13 @@ class LoginApi(generics.GenericAPIView):
         
         data = request.data
         queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True, data=data)
+        serializer = self.get_serializer(queryset, data=data)
         
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        username = serializer.data['username']
-        password = serializer.data['password']
+        username = serializer.validated_data.get('username')
+        password = serializer.validated_data.get('password')
             
         user = authenticate(username=username, password=password)
         if user is not None:

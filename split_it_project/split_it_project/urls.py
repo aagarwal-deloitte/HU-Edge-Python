@@ -24,31 +24,15 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from split_it_app.views import RegisterApi, LoginApi, UserApi, OccasionApi, EventApi, ExpenseApi, OccasionSummaryApi
-
-
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
     path('split_it_app/schema/', SpectacularAPIView.as_view(), name='schema'),
     path(
         'split_it_app/docs/',
         SpectacularSwaggerView.as_view(url_name='schema'),
         name='swagger'
     ),
-    
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    
-    path('split_it_app/register/', RegisterApi.as_view(), name = 'register_users'),
-    path('split_it_app/login/', LoginApi.as_view(), name = 'login_users'),
-    
-    path('split_it_app/users/', UserApi.as_view(), name = 'get_users'),  
-    
-    path('split_it_app/occasion/', OccasionApi.as_view(), name = 'occasion-view-create'),
-    path('split_it_app/occasion/<int:pk>/summary', OccasionSummaryApi.as_view(), name = 'occasion-summary'),
-    
-    path('split_it_app/event/', EventApi.as_view(), name = 'event-view-create'),
-    
-    path('split_it_app/event/clear_expense', ExpenseApi.as_view(), name = 'expense-clear'),
+    path('split_it_app/', include('split_it_app.urls')),
 ]
