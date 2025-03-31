@@ -10,6 +10,7 @@ REGISTER_USER_URL = reverse('split_it_app:register_users')
 LOGIN_USER_URL = reverse('split_it_app:login_users')
 OCCASION_URL = reverse('split_it_app:occasion-view-create')
 EVENT_URL = reverse('split_it_app:event-view-create')
+EXPENSE_URL = reverse('split_it_app:expense-clear')
 
 class RegisterApiTest(TestCase):
     """ This testcase tests the RegisterApi. """
@@ -144,7 +145,7 @@ class OccasionApiTest(TestCase):
     
     def test_get_occasion_success(self):
         self.client.post(self.occasion_url, self.occasion_data, format='json') # creating a occasion
-        response = self.client.get(self.occasion_url, self.occasion_data, format='json') # viewing the occasion
+        response = self.client.get(self.occasion_url, format='json') # viewing the occasion
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(self.occasion.objects.filter(description='testing occasion').exists())
         self.assertIn('id', response.data[0])
@@ -190,6 +191,7 @@ class EventApiTest(TestCase):
     def tearDown(self):
         self.user.objects.all().delete()
         self.occasion.objects.all().delete()
+        self.event.objects.all().delete()
         
     def test_create_event_only_with_equal_split_success(self):
         data = {
@@ -277,7 +279,7 @@ class EventApiTest(TestCase):
             "split_type": "equal"
         }
         self.client.post(self.event_url, data, format='json') # creating an event
-        response = self.client.get(self.event_url, data, format='json') # viewing the event
+        response = self.client.get(self.event_url, format='json') # viewing the event
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(self.event.objects.filter(description='test event').exists())
         self.assertIn('id', response.data[0])
@@ -296,3 +298,186 @@ class EventApiTest(TestCase):
         response = self.client.post(self.event_url, data, format='json') # creating the same event again for same occasion
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('The fields description, amount must make a unique set.', response.data['non_field_errors'][0])
+        
+class ExpenseApiTest(TestCase):
+    """ This testcase tests the ExpenseApi. """
+    
+    def setUp(self):
+        self.user = get_user_model()
+        self.occasion = Occasion
+        self.event = Event
+        self.client = APIClient()
+        
+        self.register_url = REGISTER_USER_URL
+        self.login_url = LOGIN_USER_URL
+        self.occasion_url = OCCASION_URL
+        self.event_url = EVENT_URL
+        self.expense_url = EXPENSE_URL
+        
+        data = {
+            'username': 'testuser',
+            'email': 'testuser@example.com',
+            'password': 'testpassword'
+        }
+        self.client.post(self.register_url, data, format='json') # registering the user
+        data = {
+            'username': 'testuser',
+            'password': 'testpassword'
+        }
+        response = self.client.post(self.login_url, data, format='json') # logging in the user
+        access_token = response.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + access_token) # setting jwt token
+        data = {
+            'description': 'test occasion',
+            'participants' : ["test1", "test2", "ab11c"]
+        }
+        self.client.post(self.occasion_url, data, format='json')  # creating an occasion
+        self.event_data = {
+            "description": "test event",
+            "amount": 30,
+            "expender": "test1",
+            "utiliser" : ["test1", "test2"],
+            "split_type": "equal",
+            "occasion": "test occasion" 
+        }
+        
+    def tearDown(self):
+        self.user.objects.all().delete()
+        self.occasion.objects.all().delete()
+        self.event.objects.all().delete()
+        
+    def test_clear_expense_success(self):
+        expected_split = {'test1': 15.0, 'test2': 15.0}
+        response = self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        self.assertEqual(response.data['expense_split'], expected_split)
+        data = {
+            "event": "test event",
+            "user": "test1",
+            "amount": 15.0
+        }
+        expected_split = {'test1': 0.0, 'test2': 15.0}
+        response = self.client.post(self.expense_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['message'], 'Updated expense for user: test1 for event: test event.')
+        self.assertEqual(response.data['updated_expense'], expected_split)
+        
+    def test_clear_expense_fail(self):
+        expected_split = {'test1': 15.0, 'test2': 15.0}
+        response = self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        self.assertEqual(response.data['expense_split'], expected_split)
+        data = {
+            "event": "test event",
+            "user": "test1",
+            "amount": 15.0
+        }
+        expected_split = {'test1': 0.0, 'test2': 15.0}
+        response = self.client.post(self.expense_url, data, format='json')
+        response = self.client.post(self.expense_url, data, format='json') # clearing the same expense again
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'Expense for this event is already cleared.')
+        
+class OccasionSummaryApiTest(TestCase):
+    """ This testcase tests the OccasionSummaryApi. """
+    
+    def setUp(self):
+        self.user = get_user_model()
+        self.occasion = Occasion
+        self.event = Event
+        self.client = APIClient()
+        
+        self.register_url = REGISTER_USER_URL
+        self.login_url = LOGIN_USER_URL
+        self.occasion_url = OCCASION_URL
+        self.event_url = EVENT_URL
+        self.expense_url = EXPENSE_URL
+        
+        data = {
+            'username': 'testuser',
+            'email': 'testuser@example.com',
+            'password': 'testpassword'
+        }
+        self.client.post(self.register_url, data, format='json') # registering the user
+        data = {
+            'username': 'testuser',
+            'password': 'testpassword'
+        }
+        response = self.client.post(self.login_url, data, format='json') # logging in the user
+        access_token = response.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + access_token) # setting jwt token
+        data = {
+            'description': 'test occasion',
+            'participants' : ["test1", "test2", "ab11c"]
+        }
+        self.client.post(self.occasion_url, data, format='json')  # creating an occasion
+        response = self.client.get(self.occasion_url, format='json')
+        self.occasion_id = response.data[0]['id']
+        
+        self.summary_url = reverse('split_it_app:occasion-summary', args=[self.occasion_id])
+        
+    def tearDown(self):
+        self.user.objects.all().delete()
+        self.occasion.objects.all().delete()
+        self.event.objects.all().delete()
+        
+    def test_get_occasion_summary(self):
+        event1 = {
+            "description": "test event1",
+            "amount": 30,
+            "expender": "test1",
+            "utiliser" : ["test1", "test2"],
+            "split_type": "equal",
+             "occasion": "test occasion" 
+        }
+        self.client.post(self.event_url, event1, format='json') # creating a event
+        
+        event2 = {
+            "description": "test event2",
+            "amount": 100,
+            "expender": "test1",
+            "utiliser" : ["test1","test2", "ab11c"],
+            "split_type": "equal",
+            "occasion": "test occasion" 
+        } 
+        self.client.post(self.event_url, event2, format='json') # creating a event
+        
+        event3 = {
+            "description": "test event",
+            "amount": 150,
+            "expender": "test1",
+            "utiliser" : ["test1","test2", "ab11c"],
+            "split_type": "unequal",
+            "split": [80, 40, 30],
+            "occasion": "test occasion"
+        } 
+        expected_split = {'test1': 80.0, 'test2': 40.0, "ab11c": 30.0}
+        self.client.post(self.event_url, event3, format='json') # creating a event
+        
+        data = {
+            "event": "test event",
+            "user": "test1",
+            "amount": 50.0
+        }
+        self.client.post(self.expense_url, data, format='json') # clearing the expense for test1 user
+        expected_total_expense = 280.0
+        expected_individual_expense = {'test1': 128.32999999999998, 'test2': 88.33, 'ab11c': 63.33}
+        expected_cleared_expense = {'test1': 50.0}
+        expected_total_active_expense = {'test1': 78.33, 'test2': 88.33, 'ab11c': 63.33}
+        response = self.client.get(self.summary_url, format='json') # getting the occasion expenditure summary
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['occasion'], 'test occasion')
+        self.assertEqual(response.data['total_expense'], expected_total_expense)
+        self.assertEqual(response.data['total_no_of_events'], 3)
+        self.assertEqual(response.data['total_individual_expense'], expected_individual_expense)
+        self.assertEqual(response.data['cleared_expense'], expected_cleared_expense)
+        self.assertEqual(response.data['total_active_expense'], expected_total_active_expense)        
+        
+
+        
+        
+        
+        
+        
+        
+        
+        
+        

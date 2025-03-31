@@ -129,7 +129,7 @@ class OccasionSummaryApi(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = None
     
-    def retrieve(self, request, *args, **kwargs):
-        occasion = self.get_object()
+    def get(self, request, pk, format=None):
+        occasion = Occasion.objects.get(pk=pk)
         expenditure_summary = occasion.get_expenditure_summary()
         return Response(expenditure_summary, status=status.HTTP_200_OK)
