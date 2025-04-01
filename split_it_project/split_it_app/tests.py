@@ -375,6 +375,49 @@ class ExpenseApiTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['message'], 'Expense for this event is already cleared.')
         
+    def test_clear_expense_no_user_fail(self):
+        self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        data = {
+            "event": "test event",
+            "amount": 15.0
+        }
+        response = self.client.post(self.expense_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'User and Event are required.')
+        
+    def test_clear_expense_no_event_fail(self):
+        self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        data = {
+            "user": "test1",
+            "amount": 15.0
+        }
+        response = self.client.post(self.expense_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'User and Event are required.')
+        
+    def test_clear_expense_invalid_user_fail(self):
+        self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        data = {
+            "event": "test event",
+            "user": "test341", # this user does not exist for the event.
+            "amount": 15.0
+        }
+        response = self.client.post(self.expense_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['message'], 'No such user: test341 found for event: test event.')
+        
+    def test_clear_expense_greater_amount_than_split_fail(self):
+        self.client.post(self.event_url, self.event_data, format='json') # creating an event
+        data = {
+            "event": "test event",
+            "user": "test1",
+            "amount": 20.0 # actual split of the user is 15.0, but we're clearing 20.0
+        }
+        expected_split = {'test1': 0.0, 'test2': 15.0}
+        response = self.client.post(self.expense_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'Amount provided is greater than expense split for user: test1')
+        
 class OccasionSummaryApiTest(TestCase):
     """ This testcase tests the OccasionSummaryApi. """
     
@@ -425,7 +468,7 @@ class OccasionSummaryApiTest(TestCase):
             "expender": "test1",
             "utiliser" : ["test1", "test2"],
             "split_type": "equal",
-             "occasion": "test occasion" 
+            "occasion": "test occasion" 
         }
         self.client.post(self.event_url, event1, format='json') # creating a event
         
@@ -448,7 +491,6 @@ class OccasionSummaryApiTest(TestCase):
             "split": [80, 40, 30],
             "occasion": "test occasion"
         } 
-        expected_split = {'test1': 80.0, 'test2': 40.0, "ab11c": 30.0}
         self.client.post(self.event_url, event3, format='json') # creating a event
         
         data = {

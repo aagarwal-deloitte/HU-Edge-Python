@@ -104,12 +104,12 @@ class ExpenseApi(APIView):
         split_amount = request.data.get('amount')
         
         if not user_name or not event_name:
-            return Response("User and Event are required.", status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'User and Event are required.'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             event = Event.objects.get(description=event_name)
         except Event.DoesNotExist:
-            return Response("Provided event does not exist.", status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'Provided event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
         
         if event.clear_expense(user_name, split_amount):
             return Response({
