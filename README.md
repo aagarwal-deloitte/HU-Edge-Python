@@ -21,6 +21,7 @@ There are 7 views used.
 All the models have their corresponnding serializers.
 
 The swagger can be viewed using this: http://127.0.0.1:8000/split_it_app/docs/
+
 The schema can be downloaded using this: http://127.0.0.1:8000/split_it_app/schema/
 
 To run the application, make sure you are inside the parent split_it_project directory.
