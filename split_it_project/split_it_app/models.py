@@ -39,28 +39,28 @@ class Occasion(models.Model):
       
       for event in events:
          for user, amount in event.expense_split.items():
-            summary['total_active_expense'][user] =  float(summary['total_active_expense'].get(user, 0.0) + amount)
+            summary['total_active_expense'][user] =  round(float(summary['total_active_expense'].get(user, 0.0) + amount), 2)
       
       for event in events:
-            summary['event_expense'][event.description] = event.amount
+            summary['event_expense'][event.description] = round(event.amount, 2)
             
       cleared_expense = (
          ExpenditureSummary.objects.filter(event__in=events).values("user").annotate(total_cleared=Sum("amount")) # sums the cleared amount by user
       )
       
       for user, active_amount in summary['total_active_expense'].items():
-         summary['total_individual_expense'][user] = active_amount
+         summary['total_individual_expense'][user] = round(active_amount, 2)
          
          
       for expense in cleared_expense:
          user = expense['user']
          cleared_amount = expense['total_cleared']
-         summary['total_individual_expense'][user] = summary['total_individual_expense'].get(user, 0.0) + float(cleared_amount)
+         summary['total_individual_expense'][user] = round(summary['total_individual_expense'].get(user, 0.0) + float(cleared_amount), 2)
          
       for expense in cleared_expense:
          user = expense['user']
          cleared_amount = expense['total_cleared']
-         summary['cleared_expense'][user] = float(cleared_amount)
+         summary['cleared_expense'][user] = round(float(cleared_amount), 2)
             
       return summary
       

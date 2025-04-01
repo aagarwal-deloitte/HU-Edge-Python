@@ -2,7 +2,6 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.test import APIClient
 from .models import Occasion, Event
 
@@ -459,7 +458,7 @@ class OccasionSummaryApiTest(TestCase):
         }
         self.client.post(self.expense_url, data, format='json') # clearing the expense for test1 user
         expected_total_expense = 280.0
-        expected_individual_expense = {'test1': 128.32999999999998, 'test2': 88.33, 'ab11c': 63.33}
+        expected_individual_expense = {'test1': 128.33, 'test2': 88.33, 'ab11c': 63.33}
         expected_cleared_expense = {'test1': 50.0}
         expected_total_active_expense = {'test1': 78.33, 'test2': 88.33, 'ab11c': 63.33}
         response = self.client.get(self.summary_url, format='json') # getting the occasion expenditure summary
